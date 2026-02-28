@@ -1,0 +1,143 @@
+import numpy as np
+x=np.array([0,1])
+w=np.array([0.5,0.5])
+b=-0.7
+wx = w * x
+print(wx)
+sum_wx = np.sum(wx)
+print(sum_wx)
+result = sum_wx + b
+print(result)
+
+
+
+
+
+#画阶跃函数
+import numpy as np
+import matplotlib.pyplot as plt
+
+# 解决中文显示问题
+plt.rcParams["font.family"] = ["SimHei", "WenQuanYi Micro Hei", "Heiti TC"]
+plt.rcParams['axes.unicode_minus'] = False  # 正确显示负号
+
+# 定义单位阶跃函数
+def unit_step_function(t):
+    return np.where(t >= 0, 1, 0)
+
+# 生成时间数据
+t_start = -5
+t_end = 5
+t = np.linspace(t_start, t_end, 1000)
+
+# 计算阶跃函数值
+u_t = unit_step_function(t)
+
+# 创建图形
+plt.figure(figsize=(8, 5))
+
+# 绘制阶跃曲线（使用简单的表达式描述，避免cases语法）
+plt.plot(t, u_t, color='blue', linewidth=2, 
+         label=r'$u(t)$：当$t<0$时为$0$，当$t \geq 0$时为$1$')
+
+# 标记t=0处的关键点
+plt.scatter(0, 1, color='blue', s=50, zorder=5)  # 实心点表示t=0时取1
+plt.scatter(0, 0, color='blue', s=50, facecolors='none', zorder=5)  # 空心点表示t=0时不取0
+
+# 添加辅助线和网格
+plt.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
+plt.grid(True, alpha=0.3)
+
+# 设置坐标轴范围和标签
+plt.xlim(t_start - 0.5, t_end + 0.5)
+plt.ylim(-0.5, 1.5)
+plt.xlabel('$t$ (时间)', fontsize=12)
+plt.ylabel('$u(t)$ (阶跃函数值)', fontsize=12)
+
+# 添加标题和图例
+plt.title('单位阶跃函数 $u(t)$ 的图像', fontsize=14, pad=15)
+plt.legend(fontsize=11, loc='upper right')
+
+# 显示图像
+plt.show()
+
+
+#画sigmoid
+import numpy as np
+import matplotlib.pyplot as plt
+
+# 定义sigmoid函数
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+# 生成x值范围
+x = np.linspace(-10, 10, 1000)  # 从-10到10生成1000个点
+y = sigmoid(x)
+
+# 创建图形
+plt.figure(figsize=(10, 6))
+
+# 绘制sigmoid曲线
+plt.plot(x, y, color='blue', linewidth=2)
+
+# 添加水平和垂直参考线
+plt.axhline(y=0.5, color='r', linestyle='--', alpha=0.5)
+plt.axvline(x=0, color='r', linestyle='--', alpha=0.5)
+
+# 添加标题和标签
+plt.title('Sigmoid Function', fontsize=14)
+plt.xlabel('x', fontsize=12)
+plt.ylabel('sigmoid(x)', fontsize=12)
+
+# 添加网格
+plt.grid(True, alpha=0.3)
+
+# 设置坐标轴范围
+plt.xlim(-10, 10)
+plt.ylim(0, 1)
+
+# 显示图像
+plt.show()
+    
+	
+	
+	
+	
+	
+#画ReLU函数
+import numpy as np
+import matplotlib.pyplot as plt
+
+# 定义ReLU函数
+def relu(x):
+    return np.maximum(0, x)
+
+# 生成x值范围
+x = np.linspace(-10, 10, 1000)  # 从-10到10生成1000个点
+y = relu(x)
+
+# 创建图形
+plt.figure(figsize=(10, 6))
+
+# 绘制ReLU曲线
+plt.plot(x, y, color='blue', linewidth=2)
+
+# 添加参考线
+plt.axhline(y=0, color='k', linestyle='-', alpha=0.3)
+plt.axvline(x=0, color='k', linestyle='-', alpha=0.3)
+
+# 添加标题和标签
+plt.title('ReLU Function', fontsize=14)
+plt.xlabel('x', fontsize=12)
+plt.ylabel('relu(x)', fontsize=12)
+
+# 添加网格
+plt.grid(True, alpha=0.3)
+
+# 设置坐标轴范围
+plt.xlim(-10, 10)
+plt.ylim(-1, 10)
+
+# 显示图像
+plt.show()
+    

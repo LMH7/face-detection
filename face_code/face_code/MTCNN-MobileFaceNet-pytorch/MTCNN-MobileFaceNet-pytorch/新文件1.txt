@@ -1,0 +1,129 @@
+import os
+import random
+import xml.etree.ElementTree as ET
+
+# -------------------------- 你需要改的地方（只有这2行！）--------------------------
+IMG_FOLDER = "E:/HighAltitude_CPP/high_altitude_imgs"  # 图片文件夹路径（不要改格式，只改C盘为你的盘，比如D:）
+XML_FOLDER = "E:/HighAltitude_CPP/high_altitude_xmls"  # XML文件夹路径（同上）
+# ----------------------------------------------------------------------
+OUTPUT_ID_MAP = "E:/HighAltitude_CPP/face_id_map.txt"  # 生成的身份映射表路径（不用改）
+OUTPUT_PAIRS = "E:/HighAltitude_CPP/high_altitude_pairs.txt"  # 生成的配对文件路径（不用改）
+POSITIVE_COUNT = 100  # 正样本数量（同一人，不用改）
+NEGATIVE_COUNT = 100  # 负样本数量（不同人，不用改）
+
+def parse_xml_get_id(xml_path, target_tag):
+    """从XML提取personXX"""
+    try:
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        for obj in root.findall("object"):
+            id_elem = obj.find(target_tag)
+            if id_elem and id_elem.text.strip():
+                return id_elem.text.strip()
+        print(f"警告：{os.path.basename(xml_path)} 没找到personXX")
+        return None
+    except Exception as e:
+        print(f"解析{os.path.basename(xml_path)}出错：{str(e)}")
+        return None
+
+def xml_to_id_map(img_folder, xml_folder, target_tag):
+    """关联XML和图片，生成ID映射"""
+    id_to_imgs = {}  # personXX → 图片列表
+    img_extensions = (".jpg", ".jpeg", ".png")
+    
+    for img_name in os.listdir(img_folder):
+        if not img_name.lower().endswith(img_extensions):
+            continue
+        
+        # 匹配对应的XML
+        xml_name = os.path.splitext(img_name)[0] + ".xml"
+        xml_path = os.path.join(xml_folder, xml_name)
+        if not os.path.exists(xml_path):
+            print(f"警告：{img_name} 没有对应的XML，跳过")
+            continue
+        
+        # 提取personXX
+        person_id = parse_xml_get_id(xml_path, target_tag)
+        if not person_id:
+            continue
+        
+        # 图片相对路径（给C++用）
+        img_relative_path = f"high_altitude_imgs/{img_name}"  # 不用改
+        face_idx = "0"  # 初始序号，后面会递增
+        
+        # 处理一张图多行人
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        face_idx = 0  # 第一张行人0，第二张1，以此类推
+        for obj in root.findall("object"):
+            obj_person_id = obj.find(target_tag).text.strip()
+            if obj_person_id == person_id:
+                if obj_person_id not in id_to_imgs:
+                    id_to_imgs[obj_person_id] = []
+                id_to_imgs[obj_person_id].append( (img_relative_path, str(face_idx)) )
+            face_idx += 1  # 下一个行人序号+1
+    return id_to_imgs
+
+def generate_id_map_file(id_to_imgs, output_path):
+    """生成face_id_map.txt"""
+    id_counter = 1
+    person_to_id = {}  # person13 → ID_003
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("# 图片路径  人脸序号  身份ID\n")
+        for person_id in sorted(id_to_imgs.keys()):
+            if person_id not in person_to_id:
+                person_to_id[person_id] = f"ID_{id_counter:03d}"
+                id_counter += 1
+            for img_path, face_idx in id_to_imgs[person_id]:
+                f.write(f"{img_path}  {face_idx}  {person_to_id[person_id]}\n")
+    print(f"✅ 生成face_id_map.txt，共{len(id_to_imgs)}个身份")
+
+def generate_pairs_file(id_to_imgs, output_path, pos_count, neg_count):
+    """生成high_altitude_pairs.txt"""
+    all_ids = list(id_to_imgs.keys())
+    pairs = []
+    
+    # 生成正样本（同一personXX）
+    valid_ids = [pid for pid in all_ids if len(id_to_imgs[pid]) >= 2]
+    if not valid_ids:
+        print("❌ 没有足够的图片生成正样本！")
+        return
+    while len(pairs) < pos_count:
+        pid = random.choice(valid_ids)
+        img1, img2 = random.sample(id_to_imgs[pid], 2)
+        pairs.append( (img1[0], img1[1], img2[0], img2[1], 1) )
+    
+    # 生成负样本（不同personXX）
+    if len(all_ids) < 2:
+        print("❌ 没有足够的身份生成负样本！")
+        return
+    while len(pairs) < pos_count + neg_count:
+        pid1, pid2 = random.sample(all_ids, 2)
+        img1 = random.choice(id_to_imgs[pid1])
+        img2 = random.choice(id_to_imgs[pid2])
+        pairs.append( (img1[0], img1[1], img2[0], img2[1], -1) )
+    
+    # 保存
+    random.shuffle(pairs)
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("# 图片1路径  图片1人脸序号  图片2路径  图片2人脸序号  标签（1=同一人，-1=不同人）\n")
+        for p in pairs:
+            f.write(f"{p[0]}  {p[1]}  {p[2]}  {p[3]}  {p[4]}\n")
+    print(f"✅ 生成high_altitude_pairs.txt，共{len(pairs)}组测试数据")
+
+if __name__ == "__main__":
+    print("📊 开始解析XML和图片...")
+    id_to_imgs = xml_to_id_map(IMG_FOLDER, XML_FOLDER, "name")  # "name"是XML里personXX的标签，不用改
+    if not id_to_imgs:
+        print("❌ 没解析到任何数据，检查路径！")
+        exit()
+    
+    print("\n📝 生成face_id_map.txt...")
+    generate_id_map_file(id_to_imgs, OUTPUT_ID_MAP)
+    
+    print("\n📝 生成high_altitude_pairs.txt...")
+    generate_pairs_file(id_to_imgs, OUTPUT_PAIRS, POSITIVE_COUNT, NEGATIVE_COUNT)
+    
+    print(f"\n🎉 全部完成！文件在：")
+    print(f"- face_id_map.txt: {OUTPUT_ID_MAP}")
+    print(f"- high_altitude_pairs.txt: {OUTPUT_PAIRS}")
